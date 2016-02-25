@@ -1,6 +1,7 @@
 package hxnet.ws;
 
 import haxe.io.Bytes;
+import js.html.ArrayBuffer;
 
 #if js
 class Client {
@@ -19,17 +20,16 @@ class Client {
 		}
 
 		socket = new js.html.WebSocket('ws://${hostname}:${port}');
+		socket.binaryType = js.html.BinaryType.ARRAYBUFFER;
 		socket.onmessage = function( line ) {
-			trace('xxx');
-			trace(line);
-			trace(line.data);
+			// TODO (DK) is this efficient?
+			var buffer : ArrayBuffer = cast line.data;
+			var bytes = Bytes.ofData(buffer);
+			var message = bytes.toString();
 
-			//var message = haxe.Json.parse(line.data);
-			//trace(message);
-//
-			//if (onText != null) {
-				//onText(message);
-			//}
+			if (onText != null) {
+				onText(message);
+			}
 		}
 	}
 
