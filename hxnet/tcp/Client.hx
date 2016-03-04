@@ -79,6 +79,10 @@ class Client implements hxnet.interfaces.Client
 		{
 			trace(e);
 			client = null;
+
+			if (callback != null) {
+				callback(false, Std.string(e));
+			}
 		}
 	}
 
