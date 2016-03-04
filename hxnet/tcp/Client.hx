@@ -24,7 +24,7 @@ class Client implements hxnet.interfaces.Client
 		buffer = Bytes.alloc(8192);
 	}
 
-	public function connect(?hostname:String, port:Null<Int> = 12800)
+	public function connect(?hostname:String, port:Null<Int> = 12800, callback:Bool->String->Void = null)
 	{
 		try
 		{
@@ -33,16 +33,27 @@ class Client implements hxnet.interfaces.Client
 			client.connect(hostname, port);
 
 			client.addEventListener(Event.CONNECT, function( _ ) {
-				protocol.onConnect(new Connection(client));
+				if (protocol != null) {
+					protocol.onConnect(new Connection(client));
+				}
+
+				if (callback != null) {
+					callback(true, null);
+				}
+
 				flashConnectedFlag = true;
 			});
 
-			client.addEventListener(flash.events.IOErrorEvent.IO_ERROR, function( _ ) {
-				trace(_);
+			client.addEventListener(flash.events.IOErrorEvent.IO_ERROR, function( event : flash.events.IOErrorEvent ) {
+				if (callback != null) {
+					callback(false, event.text);
+				}
 			});
 
-			client.addEventListener(flash.events.SecurityErrorEvent.SECURITY_ERROR, function( _ ) {
-				trace(_);
+			client.addEventListener(flash.events.SecurityErrorEvent.SECURITY_ERROR, function( event : flash.events.SecurityErrorEvent ) {
+				if (callback != null) {
+					callback(false, event.text);
+				}
 			});
 #else
 			if (hostname == null) hostname = Host.localhost();
@@ -56,6 +67,11 @@ class Client implements hxnet.interfaces.Client
 			if (protocol != null)
 			{
 				protocol.onConnect(new Connection(client));
+			}
+
+			if (callback != null) {
+				// TODO (DK) can we actually be sure we're connected?
+				callback(true, null);
 			}
 #end
 		}
