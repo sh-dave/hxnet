@@ -2,6 +2,7 @@ package hxnet.tcp;
 
 
 #if flash
+import flash.events.Event;
 import flash.net.Socket;
 #else
 import sys.net.Host;
@@ -30,6 +31,19 @@ class Client implements hxnet.interfaces.Client
 			client = new Socket();
 #if flash
 			client.connect(hostname, port);
+
+			client.addEventListener(Event.CONNECT, function( _ ) {
+				protocol.onConnect(new Connection(client));
+				flashConnectedFlag = true;
+			});
+
+			client.addEventListener(flash.events.IOErrorEvent.IO_ERROR, function( _ ) {
+				trace(_);
+			});
+
+			client.addEventListener(flash.events.SecurityErrorEvent.SECURITY_ERROR, function( _ ) {
+				trace(_);
+			});
 #else
 			if (hostname == null) hostname = Host.localhost();
 			client.connect(new Host(hostname), port);
@@ -37,10 +51,13 @@ class Client implements hxnet.interfaces.Client
 #end
 			// prevent recreation of array on every update
 			readSockets = [client];
+
+#if !flash
 			if (protocol != null)
 			{
 				protocol.onConnect(new Connection(client));
 			}
+#end
 		}
 		catch (e:Dynamic)
 		{
@@ -123,7 +140,7 @@ class Client implements hxnet.interfaces.Client
 
 	private inline function get_connected():Bool
 	{
-		return client != null && protocol != null;
+		return client != null && protocol != null #if flash && flashConnectedFlag #end;
 	}
 
 	private function set_blocking(value:Bool):Bool
@@ -148,4 +165,7 @@ class Client implements hxnet.interfaces.Client
 	private var readSockets:Array<Socket>;
 	private var buffer:Bytes;
 
+#if flash
+	var flashConnectedFlag = false;
+#end
 }
