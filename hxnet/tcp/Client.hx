@@ -18,6 +18,7 @@ class Client implements hxnet.interfaces.Client
 	public var protocol(default, set):Protocol;
 	public var blocking(default, set):Bool = true;
 	public var connected(get, never):Bool;
+	public var disconnected(default, default):String->Void;
 
 	public function new()
 	{
@@ -45,6 +46,8 @@ class Client implements hxnet.interfaces.Client
 			});
 
 			client.addEventListener(flash.events.IOErrorEvent.IO_ERROR, function( event : flash.events.IOErrorEvent ) {
+				flashConnectedFlag = false;
+
 				if (callback != null) {
 					callback(false, event.text);
 				}
@@ -109,11 +112,30 @@ class Client implements hxnet.interfaces.Client
 			}
 #end
 		}
-		catch (e:haxe.io.Eof)
+		catch (e:Dynamic)
 		{
-			protocol.loseConnection("disconnected");
-			client.close();
-			client = null;
+			//if (Std.is(e, haxe.io.Eof) #if flash || Std.is(e, flash.errors.IOError)) {
+				if (protocol != null) {
+					protocol.loseConnection(Std.string(e));
+					protocol = null;
+				}
+
+				if (client != null) {
+#if flash
+					if (client.connected)
+#end
+						client.close();
+
+					client = null;
+				}
+
+#if flash
+				//flashConnectedFlag = false;
+#end
+				if (disconnected != null) {
+					disconnected(Std.string(e));
+				}
+			//}
 		}
 	}
 
@@ -136,6 +158,13 @@ class Client implements hxnet.interfaces.Client
 				{
 					buffer.set(bytesReceived, byte);
 					break;
+				} else {
+#if flash
+					if (Std.is(e, flash.errors.IOError)) {
+						throw e;
+					}
+#end
+					var xxx = 666;
 				}
 			}
 
@@ -146,16 +175,29 @@ class Client implements hxnet.interfaces.Client
 		// check that buffer was filled
 		if (bytesReceived > 0)
 		{
-			protocol.dataReceived(new BytesInput(buffer, 0, bytesReceived));
+			protocol.dataReceived(new BytesInput(buffer, 0, bytesReceived));// , bytesReceived);
 		}
 	}
 
 	public function close()
 	{
-		client.close();
-		client = null;
-		protocol.loseConnection();
-		protocol = null;
+		if (client != null) {
+#if flash
+			if (client.connected)
+#end
+				client.close();
+
+			client = null;
+		}
+
+		if (protocol != null) {
+			protocol.loseConnection();
+			protocol = null;
+		}
+
+		if (disconnected != null) {
+			disconnected('close requested');
+		}
 	}
 
 	private inline function get_connected():Bool
