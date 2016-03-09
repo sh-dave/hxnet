@@ -59,11 +59,7 @@ class Client implements hxnet.interfaces.Client
 		catch (e:Dynamic)
 		{
 			trace(e);
-			client = null;
-
-			if (connectedHandler != null) {
-				connectedHandler(false, Std.string(e));
-			}
+			close(Std.string(e));
 		}
 	}
 
@@ -120,30 +116,8 @@ class Client implements hxnet.interfaces.Client
 			}
 #end
 		}
-		catch (e:Dynamic)
-		{
-			//if (Std.is(e, haxe.io.Eof) #if flash || Std.is(e, flash.errors.IOError)) {
-				if (protocol != null) {
-					protocol.loseConnection(Std.string(e));
-					protocol = null;
-				}
-
-				if (client != null) {
-#if flash
-					if (client.connected)
-#end
-						client.close();
-
-					client = null;
-				}
-
-#if flash
-				flashConnectedFlag = false;
-#end
-				if (disconnectedHandler != null) {
-					disconnectedHandler(Std.string(e));
-				}
-			//}
+		catch (e:Dynamic) {
+			close(Std.string(e));
 		}
 	}
 
@@ -152,11 +126,11 @@ class Client implements hxnet.interfaces.Client
 		var byte:Int = 0,
 			bytesReceived:Int = 0,
 			len = buffer.length;
+
 		while (bytesReceived < len)
 		{
 			try
 			{
-
 				byte = #if flash socket.readByte() #else socket.input.readByte() #end;
 			}
 			catch (e:Dynamic)
@@ -172,7 +146,6 @@ class Client implements hxnet.interfaces.Client
 						throw e;
 					}
 #end
-					var xxx = 666;
 				}
 			}
 
@@ -187,7 +160,7 @@ class Client implements hxnet.interfaces.Client
 		}
 	}
 
-	public function close()
+	public function close(?reason:String)
 	{
 		if (client != null) {
 #if flash
@@ -204,7 +177,6 @@ class Client implements hxnet.interfaces.Client
 
 		if (protocol != null) {
 			protocol.loseConnection();
-			protocol = null;
 		}
 
 #if flash
@@ -212,7 +184,7 @@ class Client implements hxnet.interfaces.Client
 #end
 
 		if (disconnectedHandler != null) {
-			disconnectedHandler('close requested');
+			disconnectedHandler(reason != null ? reason : 'close requested');
 		}
 	}
 
