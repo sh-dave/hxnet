@@ -1,9 +1,9 @@
 package hxnet.ws;
 
+#if (sys_html5 || sys_debug_html5)
 import haxe.io.Bytes;
 import js.html.ArrayBuffer;
 
-#if js
 class Client {
 	var onText : String -> Void;
 	var onBinary : Bytes -> Void;
@@ -19,7 +19,9 @@ class Client {
 
 	public function connect( hostname : String, port : Int ) {
 		if (socket != null) {
-			socket.close(0, 'force closing due to connect() call');
+			//socket.close(0, 'force closing due to connect() call');
+			trace('still connected');
+			return;
 		}
 
 		socket = new js.html.WebSocket('ws://${hostname}:${port}');
@@ -28,10 +30,13 @@ class Client {
 			// TODO (DK) is this efficient?
 			var buffer : ArrayBuffer = cast line.data;
 			var bytes = Bytes.ofData(buffer);
-			var message = bytes.toString();
 
 			if (onText != null) {
-				onText(message);
+				onText(bytes.toString());
+			}
+
+			if (onBinary != null) {
+				onBinary(bytes);
 			}
 		}
 
@@ -39,9 +44,6 @@ class Client {
 			connectedHandler(true, null);
 		}
 	}
-
-	//public function update( timeout : Float = 1 ) {
-	//}
 
 	public function sendText( text : String ) {
 		socket.send(Bytes.ofString(text).getData());
@@ -52,6 +54,11 @@ class Client {
 	}
 
 	public function close() {
+		if (socket == null) {
+			trace('no socket created');
+			return;
+		}
+
 		socket.close(0, 'close requested');
 	}
 }

@@ -28,9 +28,9 @@ class Client implements hxnet.interfaces.Client
 
 	public function connect(?hostname:String, port:Null<Int> = 12800)
 	{
-		try
-		{
-			client = new Socket();
+		client = new Socket();
+
+		try {
 #if flash
 			client.addEventListener(Event.CONNECT, client_connectHandler);
 			client.addEventListener(flash.events.IOErrorEvent.IO_ERROR, client_ioErrorHandler);
@@ -38,16 +38,32 @@ class Client implements hxnet.interfaces.Client
 			client.connect(hostname, port);
 #else
 			if (hostname == null) hostname = Host.localhost();
-			client.connect(new Host(hostname), port);
-			client.setBlocking(blocking);
+
+			try {
+				client.connect(new Host(hostname), port);
+			} catch (e : Dynamic) {
+				trace(e);
+				throw e;
+			}
+
+			try {
+				client.setBlocking(blocking);
+			} catch (e : Dynamic) {
+				trace(e);
+				throw e;
+			}
 #end
 			// prevent recreation of array on every update
 			readSockets = [client];
 
 #if !flash
-			if (protocol != null)
-			{
-				protocol.onConnect(new Connection(client));
+			if (protocol != null) {
+				try {
+					protocol.onConnect(new Connection(client));
+				} catch (e : Dynamic) {
+					trace(e);
+					close(Std.string(e));
+				}
 			}
 
 			if (connectedHandler != null) {
@@ -55,9 +71,7 @@ class Client implements hxnet.interfaces.Client
 				connectedHandler(true, null);
 			}
 #end
-		}
-		catch (e:Dynamic)
-		{
+		} catch (e:Dynamic) {
 			trace(e);
 			close(Std.string(e));
 		}
@@ -108,7 +122,7 @@ class Client implements hxnet.interfaces.Client
 			}
 			else
 			{
-				var select = Socket.select(readSockets, null, null, timeout);
+				var select = Socket.select(readSockets, writeSockets, otherSockets, timeout);
 				for (socket in select.read)
 				{
 					readSocket(socket);
@@ -214,6 +228,9 @@ class Client implements hxnet.interfaces.Client
 	private var client:Socket;
 	private var readSockets:Array<Socket>;
 	private var buffer:Bytes;
+
+	var writeSockets : Array<Socket> = [];
+	var otherSockets : Array<Socket> = [];
 
 #if flash
 	var flashConnectedFlag = false;
